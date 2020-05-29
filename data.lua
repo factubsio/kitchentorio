@@ -79,6 +79,7 @@ data:extend{
     { type = "recipe-category", name = pre.."mixing", },
     { type = "recipe-category", name = pre.."prep", },
     { type = "recipe-category", name = pre.."baking", },
+    { type = "recipe-category", name = pre.."hob", },
 }
 
 data:extend{
@@ -194,6 +195,49 @@ data:extend{
 
 data:extend{
     {
+        name = pre.."hob",
+        type = "assembling-machine",
+        crafting_categories = {pre.."hob"},
+        crafting_speed = 1,
+        energy_source = {type = "void"},
+        energy_usage = "100KW",
+
+        animation =  {
+            line_length = 8,
+            frame_count = 64,
+            -- FIXME: FIXME FIMXE
+            filename = sprite("mixer_base"),
+            size = 256,
+            scale = .5,
+        },
+
+        fluid_boxes = {
+            {
+                pipe_covers = pipecoverspictures(),
+                pipe_picture = assembler3pipepictures(),
+                pipe_connections = { { type = "input", position = {0, -1.75} } },
+                production_type = "input",
+                render_layer = "lower-object-above-shadow",
+            }
+        },
+
+        collision_box = mkbox(3, 3, 0.2),
+        selection_box = mkbox(3, 3),
+
+        placed_by = pre.."hob",
+        minable = { mining_time = 1, result = pre.."hob" },
+    },
+    {
+        type = "item",
+        name = pre.."hob",
+        stack_size = 5,
+        icons = mkicon("hob"),
+        place_result = pre.."hob"
+    }
+}
+
+data:extend{
+    {
         name = pre.."baking-oven",
         type = "assembling-machine",
         crafting_categories = {pre.."baking"},
@@ -244,19 +288,38 @@ function fix(spec)
 end
 
 function recipe(type, rec)
-    local name = pre..type.."__"..rec.to.name.."__from"
-    for _,from in ipairs(rec.from) do
-        name = name.."__"..from.name
-    end
-    return {
+    local name = nil
+    local proto = {
         type = "recipe",
         name = name,
         category = pre..type,
         energy_required = rec.time,
 
         ingredients = map(rec.from, fix),
-        results = { fix(rec.to) }
     }
+
+    if rec.multi_to then
+        name = ''
+        for _,to in ipairs(rec.multi_to) do
+            name = name.."+"..to.name
+        end
+        proto.results = map(rec.multi_to, fix)
+        proto.icons = mkicon(rec.icon)
+        proto.subgroup = pre..rec.group
+    else
+        name = pre..type..rec.to.name
+        proto.results = { fix(rec.to) }
+    end
+
+    name = name .. '__from__'
+    for _,from in ipairs(rec.from) do
+        name = name.."+"..from.name
+    end
+
+
+    proto.name = name
+    return proto
+
 end
 
 data:extend{
@@ -320,6 +383,10 @@ end
 
 for _,recipe_spec in pairs(food.bake) do
     data:extend{recipe("baking", recipe_spec)}
+end
+
+for _,recipe_spec in pairs(food.hob) do
+    data:extend{recipe("hob", recipe_spec)}
 end
 
 local delivery_chest = {

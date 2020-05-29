@@ -12,6 +12,7 @@ sh.prep = {}
 sh.mill = {}
 sh.mix = {}
 sh.bake = {}
+sh.hob = {}
 
 local process_data = {
     ["mill"] = {
@@ -29,6 +30,12 @@ local process_data = {
         from_amount = 1,
 
     },
+    -- ["mince"] = {
+    --     station = "prep",
+    --     suffix = "minced",
+
+    --     from_amount = 1,
+    -- },
     ["peel"] = {
         station = "prep",
         suffix = "peeled",
@@ -53,7 +60,10 @@ local process_data = {
 
 function lib.add_item(item)
     if item.external then return end
-    if sh.items_by_name[item.name] then return end
+    local existing = sh.items_by_name[item.name]
+
+    -- FIXME: should we append new data and/or validate the incoming data is the same as existing?
+    if existing then return existing end
 
     print("Adding item:")
     print(serpent.block(item))
@@ -108,58 +118,39 @@ function lib.add_item(item)
     auto_process("slice")
     auto_process("peel")
     auto_process("parboil")
-    -- if item.slice then
-    --     lib.process("prep", {
-    --         from = {{name = item.name, amount = 1}},
-    --         to = lib.result_of_process({
-    --             name = root_name.."-sliced"..suffix,
-    --             amount = item.slice.amount,
-    --             tint = item.tint,
-    --             stack_size = item.stack_size * item.slice.amount,
-    --             modifier = { type = "sliced", from = item },
-    --             group = item.slice.group or item.group,
-    --         }, item.slice),
-    --         time = item.slice.time,
-    --     })
-    -- end
-    -- if item.peel then
-    --     lib.process("prep", {
-    --         from = {{name = item.name, amount = 1}},
-    --         to = lib.result_of_process({
-    --             name = root_name.."-peeled"..suffix,
-    --             amount = 1,
-    --             tint = item.tint,
-    --             stack_size = item.stack_size,
-    --             modifier = { type = "peeled", from = item },
-    --             group = item.peel.group or item.group,
-    --         }, item.peel),
-    --         time = item.peel.time,
-    --     })
-    -- end
-    -- if item.parboil then
-    --     -- FIXME: boil
-    --     lib.process("prep", {
-    --         from = {{name = item.name, amount = item.parboil.batch_size}},
-    --         to = lib.result_of_process({
-    --             name = root_name.."-parboiled"..suffix,
-    --             amount = item.parboil.batch_size,
-    --             tint = item.tint,
-    --             stack_size = item.stack_size,
-    --             modifier = { type = "parboiled", from = item },
-    --             group = item.parboil.group or item.group,
-    --         }, item.parboil),
-    --         time = item.parboil.time,
-    --     })
-    -- end
+
+    return item
 end
 
-function lib.process(verb, args)
-    if args.group then args.to.group = args.group end
-    lib.add_item(args.to)
 
+function lib.process(verb, args)
+    local first_nkn_item = nil
+    -- Handle these first to ensure "group" gets propogated forwards
     for _,from in pairs(args.from) do
-        lib.add_item(from)
+        local added = lib.add_item(from)
+        if added and first_nkn_item == nil then
+            first_nkn_item = added
+        end
     end
+
+    local function propogate_group_forward(to)
+        if args.group then
+            to.group = args.group
+        elseif first_nkn_item and first_nkn_item.group then
+            to.group = first_nkn_item.group
+        end
+    end
+
+    if args.multi_to then
+        for _,to in pairs(args.multi_to) do
+            propogate_group_forward(to)
+            lib.add_item(to)
+        end
+    else
+        propogate_group_forward(args.to)
+        lib.add_item(args.to)
+    end
+
     table.insert(sh[verb], args)
 end
 
