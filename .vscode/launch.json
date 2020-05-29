@@ -9,6 +9,7 @@
             "request": "launch",
             "name": "Factorio Mod Debug",
             "factorioPath": "C:/Users/micha/factorios/bob_angel - Copy/Factorio_0.18.19/bin/x64/factorio.exe"
+            // "hookData": true,
         },
     ]
 }

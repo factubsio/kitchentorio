@@ -2,9 +2,20 @@ local food = require("food")
 
 local pre = food.pre
 
+local function pad10(num)
+    if num < 10 then
+        return "0" .. tostring(num)
+    else
+        return tostring(num)
+    end
+end
 
-local function icon(file)
-    file = string.gsub(file, "@.*", "")
+
+local function icon(raw_file)
+    local file = food.root(raw_file)
+    if file == "mill" then
+        assert(false)
+    end
     return "__kitchentorio__/icons/" .. file .. ".png"
 end
 local function sprite(file)
@@ -32,23 +43,31 @@ local function mkicon(name, rgb)
     }
 end
 
-local function mkicon_with_badges(name, chain, rgb)
+local unique_modified_icons = {
+    milled = true,
+}
+
+local function mkicon_with_badges(raw, name, chain, rgb)
     local icons = {{
             icon = icon(name),
             icon_size = 192,
             tint = rgb and rgb or {1, 1, 1}
     }}
 
-    local offsets = {{7, 7}, {7, -7}}
+    local offsets = {{8, 8}, {8, -8}}
     local offset_index = 0
     for _,entry in ipairs(chain) do
-        icons[#icons+1] = {
-            icon = icon(entry),
-            icon_size = 96,
-            scale = 0.2,
-            shift = offsets[#chain - offset_index],
-        }
-        offset_index = offset_index + 1
+        if unique_modified_icons[entry] then
+            icons[1].icon = icon(raw)
+        else
+            icons[#icons+1] = {
+                icon = icon(entry),
+                icon_size = 96,
+                scale = 0.15,
+                shift = offsets[#chain - offset_index],
+            }
+            offset_index = offset_index + 1
+        end
     end
 
     return icons
@@ -268,7 +287,7 @@ for _,item in pairs(food.items) do
         name = pre..item.name,
         stack_size = item.stack_size,
         icons = mkicon(item.name, item.tint),
-        order = "FOOD-"..item.name,
+        order = pad10(item.order),
         subgroup = pre..item.group,
         durability = 100000,
     }
@@ -282,8 +301,7 @@ for _,item in pairs(food.items) do
 
             mod = mod.from.modifier
         end
-        print(mod_chain)
-        proto.icons = mkicon_with_badges(from, mod_chain, item.tint)
+        proto.icons = mkicon_with_badges(item.name, from, mod_chain, item.tint)
     end
     data:extend{proto}
 end
@@ -408,14 +426,6 @@ data:extend{{
     },
 }}
 
-local function pad10(num)
-    if num < 10 then
-        return "0" .. tostring(num)
-    else
-        return tostring(num)
-    end
-end
-
 for hour=1,12 do
     local am = {
         type = "sprite",
@@ -436,3 +446,5 @@ for hour=1,12 do
     pm.name = pre.."clock-"..hour.."-pm"
     data:extend{pm, am}
 end
+
+print("HERE")
